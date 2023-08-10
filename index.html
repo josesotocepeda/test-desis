@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html>
+<html>
+	<head>
+      <title>Formulario de Votación</title>
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N" crossorigin="anonymous">
+		<script src="https://code.jquery.com/jquery-3.7.0.min.js" integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
+	</head>
+	<body>
+		<h1>FORMULARIO DE VOTACIÓN:</h1>
+		<hr>
+		<form action="form.php" method='POST' id="form_votacion">
+			<table border='0' width='80%' align='center'>
+				<tr>
+					<td width="30%">Nombre y Apellido</td>
+					<td><input type="text" id="nombre" name="nombre" maxlength="60" required></td>
+				</tr>
+				<tr>
+					<td>Alias</td>
+					<td><input type="text" id="alias" name="alias" maxlength="10" pattern="[A-Za-z]{3}[0-9]{3}" placeholder='ejemplo: abc123' title='Debe ingresar 3 letras seguidas de 3 números (ej: abc123) ' required></td>
+				</tr>
+				<tr>
+					<td>RUT</td>
+					<td><input type="text" id="rut" name="rut" maxlength="15" placeholder='ejemplo: 12345678-9' required></td>
+				</tr>
+				<tr>
+					<td>Email</td>
+					<td><input type="email" id="email" name="email" maxlength="100" required></td>
+				</tr>
+				<tr>
+					<td>Región</td>
+					<td>
+						<select id="regiones"  name="regiones" required>
+							<option value="">Seleccione Región</option>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<td>Comuna</td>
+					<td>
+						<select id="comunas" name="comunas" required>
+							<option value="">Seleccione Comuna</option>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<td>Candidato</td>
+					<td>
+						<select id="candidatos"  name="candidatos" required>
+							<option value="">Seleccione Candidato</option>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<td>Como se enteró de nosotros</td>
+					<td>
+						<input type="checkbox" id="como_entero_1" name="como_entero[]" value="web">
+						<label for="como_entero_1">Web</label>&nbsp;
+						<input type="checkbox" id="como_entero_2" name="como_entero[]" value="tv">
+						<label for="como_entero_2">TV</label>&nbsp;
+						<input type="checkbox" id="como_entero_3" name="como_entero[]" value="redes_sociales">
+						<label for="como_entero_3">Redes Sociales</label>&nbsp;
+						<input type="checkbox" id="como_entero_4" name="como_entero[]" value="amigo">
+						<label for="como_entero_4">Amigo</label>&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td colspan='2'>&nbsp;</td>
+				</tr>
+				<tr>
+					<td colspan='2'>
+					<input type="submit" value='Votar'></td>
+				</tr>
+			</table>
+			
+		</form>
+		
+		<script type="text/javascript">			
+			
+			$(document).ready(function() {
+				
+				// CANDIDATOS
+				$.ajax({
+					url : "ajax/cargar_candidatos.php",
+					dataType: 'json',
+					success: function(response) {
+						$.each(response,function(key, value) {
+							$("#candidatos").append('<option value=' + value.id + '>' + value.nombre + '</option>');
+						});
+					 }
+				});
+				
+				// REGIONES
+				$.ajax({
+					url : "ajax/cargar_regiones.php",
+					dataType: 'json',
+					success: function(response) {
+						$.each(response,function(key, value) {
+							$("#regiones").append('<option value=' + value.id + '>' + value.nombre + '</option>');
+						});
+					}
+				});				
+			
+				// COMUNAS
+				$('#regiones').on('change',function(){
+					var regionID = $(this).val();
+					if (regionID) {
+						$.ajax({
+							type:'POST',
+							url:'ajax/cargar_comunas.php',
+							data:'id='+regionID,
+							dataType: 'json',
+							success: function(response) {
+								$.each(response,function(key, value) {
+									$("#comunas").append('<option value=' + value.id + '>' + value.nombre + '</option>');
+								});
+							}
+						}); 
+					} else {
+					  $('#comunas').html('<option value="">Seleccione Comuna</option>'); 
+					}
+				});
+				
+				// VALIDAR RUT
+				var Fn = {
+				  validaRut : function (rutCompleto) {
+					rutCompleto = rutCompleto.replace("‐","-");
+					if (!/^[0-9]+[-|‐]{1}[0-9kK]{1}$/.test( rutCompleto ))
+					  return false;
+					var tmp   = rutCompleto.split('-');
+					var digv  = tmp[1]; 
+					var rut   = tmp[0];
+					if ( digv == 'K' ) digv = 'k' ;
+					
+					return (Fn.dv(rut) == digv );
+				  },
+				  dv : function(T){
+					var M=0,S=1;
+					for(;T;T=Math.floor(T/10))
+					  S=(S+T%10*(9-M++%6))%11;
+					return S?S-1:'k';
+				  }
+				}
+
+				// ENVIAR FORMULARIO
+				$('#form_votacion').submit(function(e) {
+				
+					// VALIDAR RUT
+					if ( ! Fn.validaRut( $("#rut").val() )) {
+						alert("El Rut no es válido :'( ");
+						return false;
+					}
+					
+					// VALIDAR COMO SE ENTERO checkbox
+					var count_check = 0;
+					$('input[type=checkbox]:checked').each(function() {
+					  count_check ++;
+					});
+					
+					if (count_check < 2) {
+						alert("Debe elegir al menos 2 opciones de 'Como se enteró de Nosotros'");
+						return false;
+					}
+					
+					return true;
+				});
+				
+			});
+
+		</script>
+	
+   </body>
+</html>
